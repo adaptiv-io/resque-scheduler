@@ -95,7 +95,10 @@ module Resque
       end
 
       def redis_master_version
-        Resque.redis.info['redis_version'].to_f
+        # Our current version is 2.8.17. This code is to prevent resque trying
+        # to access server information with unsupported (twemproxy) commands.
+        2.8
+        # Resque.redis.info['redis_version'].to_f
       end
     end
   end
