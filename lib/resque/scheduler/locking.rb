@@ -58,6 +58,10 @@ module Resque
         @master_lock ||= build_master_lock
       end
 
+      def supports_twemproxy?
+        redis_master_version == 2.8
+      end
+
       def supports_lua?
         redis_master_version >= 2.5
       end
@@ -81,7 +85,9 @@ module Resque
       private
 
       def build_master_lock
-        if supports_lua?
+        if supports_twemproxy?
+          Resque::Scheduler::Lock::ResilientEval.new(master_lock_key)
+        elsif supports_lua?
           Resque::Scheduler::Lock::Resilient.new(master_lock_key)
         else
           Resque::Scheduler::Lock::Basic.new(master_lock_key)

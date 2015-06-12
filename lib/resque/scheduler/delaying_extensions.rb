@@ -255,6 +255,7 @@ module Resque
         replies.each_slice(2).map(&:first).inject(:+)
       end
 
+=begin
       def clean_up_timestamp(key, timestamp)
         # Use a watch here to ensure nobody adds jobs to this delayed
         # queue while we're removing it.
@@ -269,6 +270,24 @@ module Resque
             redis.redis.unwatch
           end
         end
+      end
+=end
+
+      def clean_up_timestamp(key, timestamp)
+        clean_script =  <<-EOF.gsub(/^ {10}/, '')
+          if redis.call('LLEN', KEYS[1]) == 0
+          then
+            redis.call('DEL', KEYS[1])
+            redis.call('ZREM', KEYS[2], ARGV[1])
+          end
+          EOF
+          sha = "e3ab242ae1e0bf4e0935d4a74e02802a24a5b973"
+          dqs_key = "delayed_queue_schedule"
+          begin
+            redis.evalsha(sha, keys: [key, dqs_key], argv: [timestamp.to_i])
+          rescue
+            redis.eval(clean_script, keys: [key, dqs_key], argv: [timestamp.to_i])
+          end
       end
 
       def search_first_delayed_timestamp_in_range(start_at, stop_at)
